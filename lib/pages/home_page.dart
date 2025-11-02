@@ -39,7 +39,12 @@ class _HomePageState extends State<HomePage> {
   List<Contest> upcomingContests = [];
   bool isLoading = true;
   String? error;
-  Set<String> selectedPlatforms = {'Codeforces', 'LeetCode'};
+  Set<String> selectedPlatforms = {
+    'Codeforces',
+    'LeetCode',
+    'AtCoder',
+    'CodeChef',
+  };
 
   @override
   void initState() {
@@ -62,6 +67,12 @@ class _HomePageState extends State<HomePage> {
       }
       if (selectedPlatforms.contains('LeetCode')) {
         allContests.addAll(await fetchLeetCodeContests());
+      }
+      if (selectedPlatforms.contains('AtCoder')) {
+        allContests.addAll(await fetchAtCoderContests());
+      }
+      if (selectedPlatforms.contains('CodeChef')) {
+        allContests.addAll(await fetchCodeChefContests());
       }
 
       // Sort by start time
@@ -105,7 +116,6 @@ class _HomePageState extends State<HomePage> {
 
   Future<List<Contest>> fetchLeetCodeContests() async {
     try {
-      // Using LeetCode's GraphQL endpoint
       final response = await http.post(
         Uri.parse('https://leetcode.com/graphql'),
         headers: {'Content-Type': 'application/json'},
@@ -141,10 +151,55 @@ class _HomePageState extends State<HomePage> {
     return [];
   }
 
+  Future<List<Contest>> fetchAtCoderContests() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://contest-hive.vercel.app/api/atcoder'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['ok'] == true && data['data'] != null) {
+          final List contests = data['data'];
+          return contests
+              .map((c) => Contest.fromContestHiveJson(c, 'AtCoder'))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('AtCoder fetch error: $e');
+    }
+    return [];
+  }
+
+  Future<List<Contest>> fetchCodeChefContests() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://contest-hive.vercel.app/api/codechef'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['ok'] == true && data['data'] != null) {
+          final List contests = data['data'];
+          return contests
+              .map((c) => Contest.fromContestHiveJson(c, 'CodeChef'))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('CodeChef fetch error: $e');
+    }
+    return [];
+  }
+
   String formatDuration(int seconds) {
     final hours = seconds ~/ 3600;
     final minutes = (seconds % 3600) ~/ 60;
-    return '${hours}h ${minutes}m';
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    return '${minutes}m';
   }
 
   String formatTimeUntil(int seconds) {
@@ -152,7 +207,10 @@ class _HomePageState extends State<HomePage> {
     if (duration.inDays > 0) {
       return '${duration.inDays}d ${duration.inHours % 24}h';
     }
-    return '${duration.inHours}h ${duration.inMinutes % 60}m';
+    if (duration.inHours > 0) {
+      return '${duration.inHours}h ${duration.inMinutes % 60}m';
+    }
+    return '${duration.inMinutes}m';
   }
 
   void _showFilterDialog() {
@@ -169,6 +227,7 @@ class _HomePageState extends State<HomePage> {
                       CheckboxListTile(
                         title: const Text('Codeforces'),
                         value: selectedPlatforms.contains('Codeforces'),
+                        activeColor: Colors.black,
                         onChanged: (bool? value) {
                           setDialogState(() {
                             if (value == true) {
@@ -182,6 +241,7 @@ class _HomePageState extends State<HomePage> {
                       CheckboxListTile(
                         title: const Text('LeetCode'),
                         value: selectedPlatforms.contains('LeetCode'),
+                        activeColor: const Color(0xFFFFA116),
                         onChanged: (bool? value) {
                           setDialogState(() {
                             if (value == true) {
@@ -192,20 +252,54 @@ class _HomePageState extends State<HomePage> {
                           });
                         },
                       ),
+                      CheckboxListTile(
+                        title: const Text('AtCoder'),
+                        value: selectedPlatforms.contains('AtCoder'),
+                        activeColor: const Color(0xFF000000),
+                        onChanged: (bool? value) {
+                          setDialogState(() {
+                            if (value == true) {
+                              selectedPlatforms.add('AtCoder');
+                            } else {
+                              selectedPlatforms.remove('AtCoder');
+                            }
+                          });
+                        },
+                      ),
+                      CheckboxListTile(
+                        title: const Text('CodeChef'),
+                        value: selectedPlatforms.contains('CodeChef'),
+                        activeColor: const Color(0xFF5B4638),
+                        onChanged: (bool? value) {
+                          setDialogState(() {
+                            if (value == true) {
+                              selectedPlatforms.add('CodeChef');
+                            } else {
+                              selectedPlatforms.remove('CodeChef');
+                            }
+                          });
+                        },
+                      ),
                     ],
                   ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
                   fetchContests();
                 },
-                child: const Text('Apply'),
+                child: const Text(
+                  'Apply',
+                  style: TextStyle(color: Colors.black),
+                ),
               ),
             ],
           ),
@@ -309,6 +403,10 @@ class ContestCard extends StatelessWidget {
         return Colors.black;
       case 'leetcode':
         return const Color(0xFFFFA116);
+      case 'atcoder':
+        return const Color(0xFF000000);
+      case 'codechef':
+        return const Color(0xFF5B4638);
       default:
         return Colors.grey;
     }
@@ -354,12 +452,15 @@ class ContestCard extends StatelessWidget {
                 ),
                 if (contest.type != null) ...[
                   const SizedBox(width: 8),
-                  Text(
-                    contest.type!,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      contest.type!,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -478,7 +579,26 @@ class Contest {
       name: json['title'],
       type: null,
       platform: 'LeetCode',
-      durationSeconds: json['duration'] ?? 5400, // Default 90 minutes
+      durationSeconds: json['duration'] ?? 5400,
+      startTimeSeconds: startTime,
+      relativeTimeSeconds: startTime - now,
+    );
+  }
+
+  factory Contest.fromContestHiveJson(
+    Map<String, dynamic> json,
+    String platform,
+  ) {
+    final startTime =
+        DateTime.parse(json['startTime']).millisecondsSinceEpoch ~/ 1000;
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    return Contest(
+      id: json['url'].hashCode,
+      name: json['title'],
+      type: null,
+      platform: platform,
+      durationSeconds: json['duration'] ?? 0,
       startTimeSeconds: startTime,
       relativeTimeSeconds: startTime - now,
     );
