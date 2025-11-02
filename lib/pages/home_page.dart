@@ -2,34 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Contest Aggregator',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.light,
-        colorScheme: ColorScheme.light(
-          primary: Colors.black,
-          surface: Colors.grey.shade50,
-        ),
-        scaffoldBackgroundColor: Colors.white,
-        useMaterial3: true,
-      ),
-      home: const HomePage(),
-    );
-  }
-}
-
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final VoidCallback onThemeToggle;
+
+  const HomePage({super.key, required this.onThemeToggle});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -44,6 +20,13 @@ class _HomePageState extends State<HomePage> {
     'LeetCode',
     'AtCoder',
     'CodeChef',
+  };
+
+  final Map<String, Color> platformColors = {
+    'Codeforces': Colors.blue,
+    'LeetCode': const Color(0xFFFFA116),
+    'AtCoder': Colors.red,
+    'CodeChef': const Color(0xFF5B4638),
   };
 
   @override
@@ -61,7 +44,6 @@ class _HomePageState extends State<HomePage> {
     List<Contest> allContests = [];
 
     try {
-      // Fetch from selected platforms
       if (selectedPlatforms.contains('Codeforces')) {
         allContests.addAll(await fetchCodeforcesContests());
       }
@@ -75,7 +57,6 @@ class _HomePageState extends State<HomePage> {
         allContests.addAll(await fetchCodeChefContests());
       }
 
-      // Sort by start time
       allContests.sort(
         (a, b) => a.startTimeSeconds.compareTo(b.startTimeSeconds),
       );
@@ -213,110 +194,16 @@ class _HomePageState extends State<HomePage> {
     return '${duration.inMinutes}m';
   }
 
-  void _showFilterDialog() {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Filter Platforms'),
-            content: StatefulBuilder(
-              builder:
-                  (context, setDialogState) => Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CheckboxListTile(
-                        title: const Text('Codeforces'),
-                        value: selectedPlatforms.contains('Codeforces'),
-                        activeColor: Colors.black,
-                        onChanged: (bool? value) {
-                          setDialogState(() {
-                            if (value == true) {
-                              selectedPlatforms.add('Codeforces');
-                            } else {
-                              selectedPlatforms.remove('Codeforces');
-                            }
-                          });
-                        },
-                      ),
-                      CheckboxListTile(
-                        title: const Text('LeetCode'),
-                        value: selectedPlatforms.contains('LeetCode'),
-                        activeColor: const Color(0xFFFFA116),
-                        onChanged: (bool? value) {
-                          setDialogState(() {
-                            if (value == true) {
-                              selectedPlatforms.add('LeetCode');
-                            } else {
-                              selectedPlatforms.remove('LeetCode');
-                            }
-                          });
-                        },
-                      ),
-                      CheckboxListTile(
-                        title: const Text('AtCoder'),
-                        value: selectedPlatforms.contains('AtCoder'),
-                        activeColor: const Color(0xFF000000),
-                        onChanged: (bool? value) {
-                          setDialogState(() {
-                            if (value == true) {
-                              selectedPlatforms.add('AtCoder');
-                            } else {
-                              selectedPlatforms.remove('AtCoder');
-                            }
-                          });
-                        },
-                      ),
-                      CheckboxListTile(
-                        title: const Text('CodeChef'),
-                        value: selectedPlatforms.contains('CodeChef'),
-                        activeColor: const Color(0xFF5B4638),
-                        onChanged: (bool? value) {
-                          setDialogState(() {
-                            if (value == true) {
-                              selectedPlatforms.add('CodeChef');
-                            } else {
-                              selectedPlatforms.remove('CodeChef');
-                            }
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  fetchContests();
-                },
-                child: const Text(
-                  'Apply',
-                  style: TextStyle(color: Colors.black),
-                ),
-              ),
-            ],
-          ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
         title: const Text(
           'Upcoming Contests',
           style: TextStyle(
-            color: Colors.black,
             fontSize: 24,
             fontWeight: FontWeight.w600,
             letterSpacing: -0.5,
@@ -324,63 +211,136 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list, color: Colors.black),
-            onPressed: _showFilterDialog,
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+            onPressed: widget.onThemeToggle,
+            tooltip: 'Toggle Theme',
           ),
         ],
       ),
-      body:
-          isLoading
-              ? const Center(
-                child: CircularProgressIndicator(
-                  color: Colors.black,
-                  strokeWidth: 2,
-                ),
-              )
-              : error != null
-              ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(error!, style: const TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: fetchContests,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              )
-              : upcomingContests.isEmpty
-              ? const Center(
-                child: Text(
-                  'No upcoming contests',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              )
-              : RefreshIndicator(
-                color: Colors.black,
-                onRefresh: fetchContests,
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: upcomingContests.length,
-                  itemBuilder: (context, index) {
-                    final contest = upcomingContests[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: ContestCard(
-                        contest: contest,
-                        formatDuration: formatDuration,
-                        formatTimeUntil: formatTimeUntil,
-                      ),
-                    );
-                  },
-                ),
+      body: Column(
+        children: [
+          // Horizontal scrollable filter chips
+          Container(
+            height: 60,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children:
+                    platformColors.entries.map((entry) {
+                      final platform = entry.key;
+                      final color = entry.value;
+                      final isSelected = selectedPlatforms.contains(platform);
+
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text(
+                            '#${platform.toLowerCase()}',
+                            style: TextStyle(
+                              color:
+                                  isSelected
+                                      ? Colors.white
+                                      : (isDark ? Colors.white : Colors.black),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          selected: isSelected,
+                          onSelected: (bool selected) {
+                            setState(() {
+                              if (selected) {
+                                selectedPlatforms.add(platform);
+                              } else {
+                                selectedPlatforms.remove(platform);
+                              }
+                            });
+                            fetchContests();
+                          },
+                          backgroundColor:
+                              isDark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade200,
+                          selectedColor: color,
+                          checkmarkColor: Colors.white,
+                          side: BorderSide(
+                            color: isSelected ? color : Colors.transparent,
+                            width: 1.5,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                      );
+                    }).toList(),
               ),
+            ),
+          ),
+          const Divider(height: 1),
+          // Contest list
+          Expanded(
+            child:
+                isLoading
+                    ? Center(
+                      child: CircularProgressIndicator(
+                        color: isDark ? Colors.white : Colors.black,
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : error != null
+                    ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            error!,
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: fetchContests,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  isDark ? Colors.white : Colors.black,
+                              foregroundColor:
+                                  isDark ? Colors.black : Colors.white,
+                            ),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    )
+                    : upcomingContests.isEmpty
+                    ? Center(
+                      child: Text(
+                        'No upcoming contests',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                    )
+                    : RefreshIndicator(
+                      color: isDark ? Colors.white : Colors.black,
+                      onRefresh: fetchContests,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: upcomingContests.length,
+                        itemBuilder: (context, index) {
+                          final contest = upcomingContests[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: ContestCard(
+                              contest: contest,
+                              formatDuration: formatDuration,
+                              formatTimeUntil: formatTimeUntil,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -400,11 +360,11 @@ class ContestCard extends StatelessWidget {
   Color _getPlatformColor(String platform) {
     switch (platform.toLowerCase()) {
       case 'codeforces':
-        return Colors.black;
+        return Colors.blue;
       case 'leetcode':
         return const Color(0xFFFFA116);
       case 'atcoder':
-        return const Color(0xFF000000);
+        return Colors.red;
       case 'codechef':
         return const Color(0xFF5B4638);
       default:
@@ -414,14 +374,17 @@ class ContestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final startTime = DateTime.fromMillisecondsSinceEpoch(
       contest.startTimeSeconds * 1000,
     );
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade200),
+        color: isDark ? Colors.grey.shade900 : Colors.white,
+        border: Border.all(
+          color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
@@ -469,10 +432,10 @@ class ContestCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               contest.name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: isDark ? Colors.white : Colors.black,
                 height: 1.3,
               ),
             ),
@@ -483,12 +446,14 @@ class ContestCard extends StatelessWidget {
                   child: _InfoItem(
                     label: 'STARTS IN',
                     value: formatTimeUntil(contest.relativeTimeSeconds),
+                    isDark: isDark,
                   ),
                 ),
                 Expanded(
                   child: _InfoItem(
                     label: 'DURATION',
                     value: formatDuration(contest.durationSeconds),
+                    isDark: isDark,
                   ),
                 ),
               ],
@@ -508,8 +473,13 @@ class ContestCard extends StatelessWidget {
 class _InfoItem extends StatelessWidget {
   final String label;
   final String value;
+  final bool isDark;
 
-  const _InfoItem({required this.label, required this.value});
+  const _InfoItem({
+    required this.label,
+    required this.value,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -528,10 +498,10 @@ class _InfoItem extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Colors.black,
+            color: isDark ? Colors.white : Colors.black,
           ),
         ),
       ],
