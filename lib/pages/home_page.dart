@@ -174,77 +174,83 @@ class _HomePageState extends State<HomePage> {
     return [];
   }
 
-  void _showFilterBottomSheet() {
+  void _showFilterDialog() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Filter Platforms',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : Colors.black,
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Filter Platforms',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.close,
-                          color: isDark ? Colors.white : Colors.black,
+                        IconButton(
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         ),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  ...platformColors.entries.map((entry) {
-                    final platform = entry.key;
-                    final color = entry.value;
-                    final isSelected = selectedPlatforms.contains(platform);
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    ...platformColors.entries.map((entry) {
+                      final platform = entry.key;
+                      final color = entry.value;
+                      final isSelected = selectedPlatforms.contains(platform);
 
-                    return CheckboxListTile(
-                      title: Text(
-                        platform,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.white : Colors.black,
+                      return CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          platform,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
                         ),
-                      ),
-                      value: isSelected,
-                      activeColor: color,
-                      checkColor: Colors.white,
-                      onChanged: (bool? value) {
-                        setModalState(() {
-                          setState(() {
-                            if (value == true) {
-                              selectedPlatforms.add(platform);
-                            } else {
-                              selectedPlatforms.remove(platform);
-                            }
+                        value: isSelected,
+                        activeColor: color,
+                        checkColor: Colors.white,
+                        onChanged: (bool? value) {
+                          setDialogState(() {
+                            setState(() {
+                              if (value == true) {
+                                selectedPlatforms.add(platform);
+                              } else {
+                                selectedPlatforms.remove(platform);
+                              }
+                            });
                           });
-                        });
-                        fetchContests();
-                      },
-                    );
-                  }),
-                  const SizedBox(height: 10),
-                ],
+                          fetchContests();
+                        },
+                      );
+                    }),
+                    const SizedBox(height: 10),
+                  ],
+                ),
               ),
             );
           },
@@ -304,7 +310,7 @@ class _HomePageState extends State<HomePage> {
                           color: isDark ? Colors.white : Colors.black,
                           size: 24,
                         ),
-                        onPressed: _showFilterBottomSheet,
+                        onPressed: _showFilterDialog,
                         tooltip: 'Filter',
                       ),
                       IconButton(
