@@ -174,6 +174,85 @@ class _HomePageState extends State<HomePage> {
     return [];
   }
 
+  void _showFilterBottomSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Filter Platforms',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.close,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  ...platformColors.entries.map((entry) {
+                    final platform = entry.key;
+                    final color = entry.value;
+                    final isSelected = selectedPlatforms.contains(platform);
+
+                    return CheckboxListTile(
+                      title: Text(
+                        platform,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      value: isSelected,
+                      activeColor: color,
+                      checkColor: Colors.white,
+                      onChanged: (bool? value) {
+                        setModalState(() {
+                          setState(() {
+                            if (value == true) {
+                              selectedPlatforms.add(platform);
+                            } else {
+                              selectedPlatforms.remove(platform);
+                            }
+                          });
+                        });
+                        fetchContests();
+                      },
+                    );
+                  }),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   String formatDuration(int seconds) {
     final hours = seconds ~/ 3600;
     final minutes = (seconds % 3600) ~/ 60;
@@ -199,147 +278,113 @@ class _HomePageState extends State<HomePage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: const Text(
-          'Upcoming Contests',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.5,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-            onPressed: widget.onThemeToggle,
-            tooltip: 'Toggle Theme',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Horizontal scrollable filter chips
-          Container(
-            height: 60,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Custom header without AppBar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
               child: Row(
-                children:
-                    platformColors.entries.map((entry) {
-                      final platform = entry.key;
-                      final color = entry.value;
-                      final isSelected = selectedPlatforms.contains(platform);
-
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          label: Text(
-                            '#${platform.toLowerCase()}',
-                            style: TextStyle(
-                              color:
-                                  isSelected
-                                      ? Colors.white
-                                      : (isDark ? Colors.white : Colors.black),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                          selected: isSelected,
-                          onSelected: (bool selected) {
-                            setState(() {
-                              if (selected) {
-                                selectedPlatforms.add(platform);
-                              } else {
-                                selectedPlatforms.remove(platform);
-                              }
-                            });
-                            fetchContests();
-                          },
-                          backgroundColor:
-                              isDark
-                                  ? Colors.grey.shade800
-                                  : Colors.grey.shade200,
-                          selectedColor: color,
-                          checkmarkColor: Colors.white,
-                          side: BorderSide(
-                            color: isSelected ? color : Colors.transparent,
-                            width: 1.5,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Upcoming Contests',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.filter_list_rounded,
+                          color: isDark ? Colors.white : Colors.black,
+                          size: 24,
                         ),
-                      );
-                    }).toList(),
+                        onPressed: _showFilterBottomSheet,
+                        tooltip: 'Filter',
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          isDark
+                              ? Icons.light_mode_rounded
+                              : Icons.dark_mode_rounded,
+                          color: isDark ? Colors.white : Colors.black,
+                          size: 24,
+                        ),
+                        onPressed: widget.onThemeToggle,
+                        tooltip: 'Toggle Theme',
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ),
-          const Divider(height: 1),
-          // Contest list
-          Expanded(
-            child:
-                isLoading
-                    ? Center(
-                      child: CircularProgressIndicator(
+            // Contest list
+            Expanded(
+              child:
+                  isLoading
+                      ? Center(
+                        child: CircularProgressIndicator(
+                          color: isDark ? Colors.white : Colors.black,
+                          strokeWidth: 2,
+                        ),
+                      )
+                      : error != null
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              error!,
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: fetchContests,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    isDark ? Colors.white : Colors.black,
+                                foregroundColor:
+                                    isDark ? Colors.black : Colors.white,
+                              ),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                      : upcomingContests.isEmpty
+                      ? Center(
+                        child: Text(
+                          'No upcoming contests',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      )
+                      : RefreshIndicator(
                         color: isDark ? Colors.white : Colors.black,
-                        strokeWidth: 2,
+                        onRefresh: fetchContests,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: upcomingContests.length,
+                          itemBuilder: (context, index) {
+                            final contest = upcomingContests[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: ContestCard(
+                                contest: contest,
+                                formatDuration: formatDuration,
+                                formatTimeUntil: formatTimeUntil,
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    )
-                    : error != null
-                    ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            error!,
-                            style: TextStyle(color: Colors.grey.shade600),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: fetchContests,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  isDark ? Colors.white : Colors.black,
-                              foregroundColor:
-                                  isDark ? Colors.black : Colors.white,
-                            ),
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    )
-                    : upcomingContests.isEmpty
-                    ? Center(
-                      child: Text(
-                        'No upcoming contests',
-                        style: TextStyle(color: Colors.grey.shade600),
-                      ),
-                    )
-                    : RefreshIndicator(
-                      color: isDark ? Colors.white : Colors.black,
-                      onRefresh: fetchContests,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: upcomingContests.length,
-                        itemBuilder: (context, index) {
-                          final contest = upcomingContests[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: ContestCard(
-                              contest: contest,
-                              formatDuration: formatDuration,
-                              formatTimeUntil: formatTimeUntil,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
